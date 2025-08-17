@@ -35,3 +35,30 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
     # List libraries link to the target library
     android
     log)
+
+# --- Library for audio_matcher.cpp ---
+# You can define multiple libraries.
+add_library(mantra_matcher SHARED
+        audio_matcher.cpp)
+
+# Find the Android logging library (liblog) and store its path in the log-lib variable.
+# This is an alternative way to link system libraries.
+find_library(
+        log-lib       # Sets the name of the path variable.
+        log           # Specifies the name of the NDK library that
+        # you want CMake to locate.
+)
+
+# Link mantra_matcher against the logging library.
+# If log-lib is found, it will be linked. Otherwise, this might cause an error or warning.
+if(log-lib)
+    target_link_libraries(mantra_matcher ${log-lib})
+else()
+    message(WARNING "Android log library not found. mantra_matcher might not link correctly.")
+    # You might choose to link directly to "log" here as well if find_library is just for demonstration
+    # target_link_libraries(mantra_matcher log)
+endif()
+
+# For more information about using CMake with Android Studio, read the
+# documentation: https://d.android.com/studio/projects/add-native-code.html.
+# For more examples on how to use CMake, see https://github.com/android/ndk-samples.
