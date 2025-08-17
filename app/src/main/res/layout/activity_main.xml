@@ -7,13 +7,18 @@
     android:orientation="vertical"
     android:padding="16dp">
 
+    <Space
+        android:layout_width="match_parent"
+        android:layout_height="24dp" />
+
     <Spinner
         android:id="@+id/mantraSpinner"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:hint="@string/select_mantra_hint"
-        android:minHeight="48dp"
-        android:padding="8dp" />
+        android:minHeight="54dp"
+        android:padding="8dp"
+        />
 
     <EditText
         android:id="@+id/matchLimitEditText"
