@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">mktwo</string>
+    <string name="start_listening_button_text" />
+    <string name="stop_listening_button_text">Stop Listening</string>
+    <string name="status_listening">Listening for mantra...</string>
+    <string name="status_stopped">Stopped</string>
 </resources>
