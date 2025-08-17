@@ -119,12 +119,26 @@ class MainActivity : ComponentActivity() {
     private fun setupUIListeners() {
         binding.mantraSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>, view: View?, position: Int, id: Long) {
-                targetMantra = parent.getItemAtPosition(position)?.toString() ?: ""
+                val selectedItem = parent.getItemAtPosition(position).toString()
+                targetMantra = if (selectedItem != getString(R.string.select_mantra_hint)) {
+                    selectedItem
+                } else {
+                    "" // Placeholder selected, clear targetMantra
+                }
                 Log.d("MainActivity", "Selected mantra: $targetMantra")
+                // Update button states
+                runOnUiThread {
+                    binding.startStopButton.isEnabled = targetMantra.isNotBlank() && !isRecognizingMantra.get() && !isRecordingMantra.get()
+                    binding.deleteButton.isEnabled = targetMantra.isNotBlank() && targetMantra != inbuiltMantraName && !isRecognizingMantra.get() && !isRecordingMantra.get()
+                }
             }
 
             override fun onNothingSelected(parent: AdapterView<*>) {
                 targetMantra = ""
+                runOnUiThread {
+                    binding.startStopButton.isEnabled = false
+                    binding.deleteButton.isEnabled = false
+                }
             }
         }
 
@@ -141,12 +155,13 @@ class MainActivity : ComponentActivity() {
             recordMantra(mantraName)
         }
 
-        binding.stopRecordingButton.setOnClickListener { stopRecordingMantra() }
+        binding.stopRecordingButton.setOnClickListener {
+            stopRecordingMantra()
+        }
 
         binding.deleteButton.setOnClickListener {
-            val mantraToDelete = targetMantra // Use the currently selected mantra for deletion
-            if (mantraToDelete.isNotBlank()) {
-                deleteMantra(mantraToDelete)
+            if (targetMantra.isNotBlank()) {
+                deleteMantra(targetMantra)
             } else {
                 Toast.makeText(this, "Please select a mantra to delete.", Toast.LENGTH_SHORT).show()
             }
@@ -165,24 +180,27 @@ class MainActivity : ComponentActivity() {
             Toast.makeText(this, "Enter a valid match limit (greater than 0).", Toast.LENGTH_SHORT).show()
             return
         }
-
         if (!isMicrophoneOpAllowed()) {
             Toast.makeText(this, "Microphone access is currently blocked by the system.", Toast.LENGTH_LONG).show()
-            // Consider directing the user to settings or providing more info
             return
         }
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             Toast.makeText(this, "Microphone permission is required to start listening.", Toast.LENGTH_SHORT).show()
-            checkPermissionAndStart() // Re-trigger permission request
+            checkPermissionAndStart()
             return
         }
 
-
         matchCount.set(0)
-        binding.matchCountText.text = "Matches: 0"
-        isRecognizingMantra.set(true)
-        binding.startStopButton.text = getString(R.string.stop_listening_button_text) // Assuming you have this in strings.xml
-        binding.statusText.text = getString(R.string.status_listening)
+        runOnUiThread {
+            binding.matchCountText.text = "Matches: 0"
+            isRecognizingMantra.set(true)
+            binding.startStopButton.text = getString(R.string.stop_listening_button_text)
+            binding.statusText.text = getString(R.string.status_listening)
+            binding.recordButton.isEnabled = false
+            binding.stopRecordingButton.isEnabled = false
+            binding.deleteButton.isEnabled = false
+            binding.mantraSpinner.isEnabled = false
+        }
         startListeningWithDelay()
     }
 
@@ -398,17 +416,16 @@ class MainActivity : ComponentActivity() {
 
     private fun stopListening() {
         if (!isRecognizingMantra.getAndSet(false) && recordingThread == null) {
-            // Already stopped or never started
             return
         }
         Log.d("MainActivity", "Stopping listening...")
 
-        recordingThread?.interrupt() // Signal the thread to stop
+        recordingThread?.interrupt()
         try {
-            recordingThread?.join(500) // Wait for the thread to finish for a short time
+            recordingThread?.join(500)
         } catch (e: InterruptedException) {
             Log.w("MainActivity", "Interrupted while joining recording thread.", e)
-            Thread.currentThread().interrupt() // Restore interrupted status
+            Thread.currentThread().interrupt()
         }
         recordingThread = null
 
@@ -431,7 +448,10 @@ class MainActivity : ComponentActivity() {
         runOnUiThread {
             binding.statusText.text = getString(R.string.status_stopped)
             binding.startStopButton.text = getString(R.string.start_listening_button_text)
-            // binding.matchCountText.text = "Matches: 0" // Optionally reset count display here or on start
+            binding.recordButton.isEnabled = true
+            binding.stopRecordingButton.isEnabled = true
+            binding.deleteButton.isEnabled = targetMantra.isNotBlank() && targetMantra != inbuiltMantraName
+            binding.mantraSpinner.isEnabled = true
         }
         Log.d("MainActivity", "Listening stopped.")
     }
@@ -444,7 +464,7 @@ class MainActivity : ComponentActivity() {
         }
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             Toast.makeText(this, "Microphone permission is required to record.", Toast.LENGTH_SHORT).show()
-            checkPermissionAndStart() // Re-trigger permission request
+            checkPermissionAndStart()
             return
         }
         if (isRecognizingMantra.get() || isRecordingMantra.get()) {
@@ -472,7 +492,7 @@ class MainActivity : ComponentActivity() {
 
         var localAudioRecord: AudioRecord? = null
         var outputStream: FileOutputStream? = null
-        val recordingFile = file // Use a final variable for the lambda
+        val recordingFile = file
 
         try {
             localAudioRecord = AudioRecord(
@@ -489,21 +509,24 @@ class MainActivity : ComponentActivity() {
             }
 
             outputStream = FileOutputStream(recordingFile)
-            writeWavHeader(outputStream, 1, sampleRate, 16) // Write initial header (data size 0)
+            writeWavHeader(outputStream, 1, sampleRate, 16)
 
             localAudioRecord.startRecording()
             isRecordingMantra.set(true)
-            stopRecordingFlag.set(false) // Ensure flag is reset
+            stopRecordingFlag.set(false)
 
             Log.d("MainActivity", "Started recording mantra: $uniqueFileName")
             runOnUiThread {
                 binding.statusText.text = "Recording: $uniqueFileName..."
-                // Consider disabling other buttons here
+                binding.startStopButton.isEnabled = false
+                binding.recordButton.isEnabled = false
+                binding.stopRecordingButton.isEnabled = true
+                binding.deleteButton.isEnabled = false
+                binding.mantraSpinner.isEnabled = false
             }
 
-
-            val buffer = ShortArray(actualRecordingBufferSize / 2) // Read in chunks that fit the buffer
-            val byteDataBuffer = ByteBuffer.allocate(actualRecordingBufferSize).order(ByteOrder.LITTLE_ENDIAN) // Re-use this buffer
+            val buffer = ShortArray(actualRecordingBufferSize / 2)
+            val byteDataBuffer = ByteBuffer.allocate(actualRecordingBufferSize).order(ByteOrder.LITTLE_ENDIAN)
 
             recordingThread = Thread({
                 Process.setThreadPriority(Process.THREAD_PRIORITY_AUDIO)
@@ -512,15 +535,13 @@ class MainActivity : ComponentActivity() {
                     while (isRecordingMantra.get() && !stopRecordingFlag.get() && !Thread.currentThread().isInterrupted) {
                         val shortsRead = localAudioRecord.read(buffer, 0, buffer.size)
                         if (shortsRead > 0) {
-                            byteDataBuffer.clear() // Prepare buffer for new data
-                            // Put only the data that was read into the ShortBuffer view
+                            byteDataBuffer.clear()
                             byteDataBuffer.asShortBuffer().put(buffer, 0, shortsRead)
-                            // Write the actual number of bytes
                             outputStream.write(byteDataBuffer.array(), 0, shortsRead * 2)
                             totalShortsWritten += shortsRead
                         } else if (shortsRead < 0) {
                             Log.e("MantraRecordingThread", "AudioRecord read error: $shortsRead")
-                            break // Exit on error
+                            break
                         }
                     }
                 } catch (e: IOException) {
@@ -534,18 +555,14 @@ class MainActivity : ComponentActivity() {
                     }
                     localAudioRecord.release()
 
-                    val recordedDataSize = totalShortsWritten * 2 // Each short is 2 bytes
-
+                    val recordedDataSize = totalShortsWritten * 2
                     try {
-                        outputStream.channel.use { channel -> // Use .use for auto-close
+                        outputStream.channel.use { channel ->
                             if (recordedDataSize > 0) {
-                                // Update ChunkSize (overall file size - 8)
                                 val overallSize = recordedDataSize + 36
-                                channel.position(4) // Position for ChunkSize
+                                channel.position(4)
                                 channel.write(ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(overallSize.toInt()))
-
-                                // Update Subchunk2Size (data size)
-                                channel.position(40) // Position for Subchunk2Size
+                                channel.position(40)
                                 channel.write(ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(recordedDataSize.toInt()))
                                 Log.d("MantraRecordingThread", "WAV header updated. Data size: $recordedDataSize")
                             }
@@ -563,51 +580,57 @@ class MainActivity : ComponentActivity() {
                     runOnUiThread {
                         if (recordedDataSize > 0) {
                             Toast.makeText(applicationContext, "Mantra recorded: $uniqueFileName", Toast.LENGTH_SHORT).show()
-                            loadReferenceMFCCs() // Reload and update spinner
+                            loadReferenceMFCCs()
+                            targetMantra = uniqueFileName // Auto-select new mantra
                         } else {
-                            if (recordingFile.exists()) recordingFile.delete() // Delete empty/failed recording
+                            if (recordingFile.exists()) recordingFile.delete()
                             Toast.makeText(applicationContext, "Recording failed or was empty.", Toast.LENGTH_SHORT).show()
                         }
                         isRecordingMantra.set(false)
                         binding.statusText.text = getString(R.string.status_stopped)
-                        // Re-enable buttons if they were disabled
+                        binding.startStopButton.isEnabled = targetMantra.isNotBlank()
+                        binding.recordButton.isEnabled = true
+                        binding.stopRecordingButton.isEnabled = true
+                        binding.deleteButton.isEnabled = targetMantra.isNotBlank() && targetMantra != inbuiltMantraName
+                        binding.mantraSpinner.isEnabled = true
                     }
                 }
             }, "MantraRecordingThread")
             recordingThread?.start()
 
-        } catch (e: Exception) { // Catch IllegalStateException, FileNotFoundException, etc.
+        } catch (e: Exception) {
             Log.e("MainActivity", "Error starting mantra recording", e)
-            localAudioRecord?.release() // Ensure release if initialized
+            localAudioRecord?.release()
             try {
-                outputStream?.close() // Ensure close if opened
+                outputStream?.close()
             } catch (ioe: IOException) {
                 Log.e("MainActivity", "Error closing stream on recording start failure", ioe)
             }
-            // If the file was created but is essentially empty (only header), delete it
-            if (file.exists() && file.length() <= 44L) { // 44L for the header size
+            if (file.exists() && file.length() <= 44L) {
                 file.delete()
             }
-            isRecordingMantra.set(false) // Reset state
+            isRecordingMantra.set(false)
             runOnUiThread {
                 Toast.makeText(this, "Error starting recording: ${e.message}", Toast.LENGTH_SHORT).show()
                 binding.statusText.text = getString(R.string.status_stopped)
+                binding.startStopButton.isEnabled = targetMantra.isNotBlank()
+                binding.recordButton.isEnabled = true
+                binding.stopRecordingButton.isEnabled = true
+                binding.deleteButton.isEnabled = targetMantra.isNotBlank() && targetMantra != inbuiltMantraName
+                binding.mantraSpinner.isEnabled = true
             }
         }
     }
 
     private fun stopRecordingMantra() {
-        if (isRecordingMantra.get()) { // Only proceed if actually recording
+        if (isRecordingMantra.get()) {
             Log.d("MainActivity", "Stopping mantra recording...")
-            stopRecordingFlag.set(true) // Signal the recording thread to stop writing data
-            isRecordingMantra.set(false) // Set this early to prevent new recordings from starting
+            stopRecordingFlag.set(true)
+            isRecordingMantra.set(false)
 
-            // Interrupting and joining is handled by the finally block in the recording thread now.
-            // The thread will stop AudioRecord and close the stream.
-            // We just need to wait for it to finish gracefully.
-            recordingThread?.interrupt() // Still good to interrupt in case it's in a blocking call
+            recordingThread?.interrupt()
             try {
-                recordingThread?.join(1000) // Wait a bit longer for file operations
+                recordingThread?.join(1000)
                 if (recordingThread?.isAlive == true) {
                     Log.w("MainActivity", "Mantra recording thread did not finish in time.")
                 }
@@ -619,6 +642,11 @@ class MainActivity : ComponentActivity() {
 
             runOnUiThread {
                 binding.statusText.text = getString(R.string.status_stopped)
+                binding.startStopButton.isEnabled = targetMantra.isNotBlank()
+                binding.recordButton.isEnabled = true
+                binding.stopRecordingButton.isEnabled = true
+                binding.deleteButton.isEnabled = targetMantra.isNotBlank() && targetMantra != inbuiltMantraName
+                binding.mantraSpinner.isEnabled = true
                 Toast.makeText(this, "Recording stopped.", Toast.LENGTH_SHORT).show()
             }
         } else {
@@ -640,7 +668,6 @@ class MainActivity : ComponentActivity() {
         val fileToDelete = File(storageDir, "$mantraName.wav")
         if (!fileToDelete.exists()) {
             Toast.makeText(this, "Mantra file '$mantraName' not found.", Toast.LENGTH_SHORT).show()
-            // It might be good to refresh the list in case of external changes
             loadReferenceMFCCs()
             return
         }
@@ -652,8 +679,13 @@ class MainActivity : ComponentActivity() {
                 if (fileToDelete.delete()) {
                     Toast.makeText(this, "Mantra '$mantraName' deleted.", Toast.LENGTH_SHORT).show()
                     Log.i("MainActivity", "Deleted mantra: $mantraName")
-                    if (targetMantra == mantraName) targetMantra = "" // Clear selection if deleted
-                    loadReferenceMFCCs() // Refresh the list and spinner
+                    if (targetMantra == mantraName) targetMantra = ""
+                    loadReferenceMFCCs()
+                    runOnUiThread {
+                        binding.mantraSpinner.setSelection(0)
+                        binding.startStopButton.isEnabled = false
+                        binding.deleteButton.isEnabled = false
+                    }
                 } else {
                     Toast.makeText(this, "Failed to delete mantra '$mantraName'.", Toast.LENGTH_SHORT).show()
                     Log.e("MainActivity", "Failed to delete mantra file: ${fileToDelete.absolutePath}")
@@ -670,7 +702,7 @@ class MainActivity : ComponentActivity() {
 
         // Add inbuilt mantra first if it exists and is valid
         val inbuiltFile = File(storageDir, "$inbuiltMantraName.wav")
-        if (inbuiltFile.exists()) { // No need to check isValidWavFile here, savedMantras already does
+        if (inbuiltFile.exists()) {
             loadWavToFloatArray(inbuiltFile)?.let { floats ->
                 if (floats.isNotEmpty()) {
                     val mfccs = mutableListOf<FloatArray>()
@@ -678,70 +710,44 @@ class MainActivity : ComponentActivity() {
                     for (i in floats.indices step chunkSize) {
                         val chunkEnd = min(i + chunkSize, floats.size)
                         val chunk = floats.copyOfRange(i, chunkEnd)
-                        if (chunk.size == chunkSize) { // Process only full chunks for consistency
+                        if (chunk.size == chunkSize) {
                             val mfcc = extractMFCC(chunk)
                             if (mfcc.size == MFCC_SIZE) mfccs.add(mfcc)
                         }
                     }
                     if (mfccs.isNotEmpty()) {
                         tempReferenceMFCCs[inbuiltMantraName] = mfccs
-                        Log.d(
-                            "MainActivity",
-                            "Loaded ${mfccs.size} MFCC frames for inbuilt: $inbuiltMantraName"
-                        )
+                        Log.d("MainActivity", "Loaded ${mfccs.size} MFCC frames for inbuilt: $inbuiltMantraName")
                     } else {
-                        Log.w(
-                            "MainActivity",
-                            "No MFCCs extracted for inbuilt mantra: $inbuiltMantraName (was valid WAV)"
-                        )
+                        Log.w("MainActivity", "No MFCCs extracted for inbuilt mantra: $inbuiltMantraName (was valid WAV)")
                     }
                 } else {
-                    Log.w(
-                        "MainActivity",
-                        "Inbuilt mantra file loaded empty float array: $inbuiltMantraName"
-                    )
+                    Log.w("MainActivity", "Inbuilt mantra file loaded empty float array: $inbuiltMantraName")
                 }
-            } ?: Log.e(
-                "MainActivity",
-                "Failed to load float array for inbuilt mantra: $inbuiltMantraName"
-            )
+            } ?: Log.e("MainActivity", "Failed to load float array for inbuilt mantra: $inbuiltMantraName")
         } else if (assets.list("")?.contains("$inbuiltMantraName.wav") == true) {
-            // This case might indicate copyInbuiltMantraToStorage failed or was skipped
-            Log.w(
-                "MainActivity",
-                "Inbuilt mantra file not found in storage, but exists in assets. Consider re-copying."
-            )
+            Log.w("MainActivity", "Inbuilt mantra file not found in storage, but exists in assets. Consider re-copying.")
         }
 
-
-        currentSavedMantras.forEach { mantraName ->
+        // Process other mantras
+        for (mantraName in currentSavedMantras) {
             if (mantraName == inbuiltMantraName && tempReferenceMFCCs.containsKey(inbuiltMantraName)) {
-                // Already processed inbuilt mantra
-                return@forEach
+                continue // Safe in a for loop, avoids Kotlin 2.2 requirement
             }
             val file = File(storageDir, "$mantraName.wav")
-            // isValidWavFile check is implicitly done by `savedMantras` getter, but double check doesn't hurt if paranoid
-            // if (!isValidWavFile(file)) return@forEach
-
             loadWavToFloatArray(file)?.let { floats ->
                 if (floats.isNotEmpty()) {
                     val mfccs = mutableListOf<FloatArray>()
                     val chunkSize = tarsosProcessingBufferSizeSamples
                     for (i in floats.indices step chunkSize) {
-                        val chunkEnd =
-                            min(i + chunkSize, floats.size) // Ensure we don't go out of bounds
+                        val chunkEnd = min(i + chunkSize, floats.size)
                         val chunk = floats.copyOfRange(i, chunkEnd)
-                        // For reference MFCCs, it's common to require the chunk to be of a specific size
-                        // to ensure consistency with the live processing.
                         if (chunk.size == chunkSize) {
                             val mfcc = extractMFCC(chunk)
-                            if (mfcc.size == MFCC_SIZE) { // Ensure MFCC vector is of expected size
+                            if (mfcc.size == MFCC_SIZE) {
                                 mfccs.add(mfcc)
                             } else if (mfcc.isNotEmpty()) {
-                                Log.w(
-                                    "MainActivity",
-                                    "MFCC for $mantraName (chunk $i) has unexpected size: ${mfcc.size}"
-                                )
+                                Log.w("MainActivity", "MFCC for $mantraName (chunk $i) has unexpected size: ${mfcc.size}")
                             }
                         }
                     }
@@ -756,11 +762,35 @@ class MainActivity : ComponentActivity() {
                 }
             } ?: Log.e("MainActivity", "Failed to load float array for $mantraName")
         }
+
+        synchronized(referenceMFCCsLock) {
+            referenceMFCCs = tempReferenceMFCCs
+        }
+        runOnUiThread { updateMantraSpinner() }
     }
     private fun updateMantraSpinner() {
-        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, savedMantras)
+        val mantraList = listOf(getString(R.string.select_mantra_hint)) + savedMantras
+        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, mantraList)
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         binding.mantraSpinner.adapter = adapter
+        // Set selection based on targetMantra
+        if (targetMantra.isBlank()) {
+            binding.mantraSpinner.setSelection(0) // Select placeholder
+        } else {
+            val index = savedMantras.indexOf(targetMantra)
+            if (index >= 0) {
+                binding.mantraSpinner.setSelection(index + 1) // +1 for placeholder
+            } else {
+                binding.mantraSpinner.setSelection(0) // Fallback to placeholder
+                targetMantra = ""
+            }
+        }
+        // Update button states
+        runOnUiThread {
+            binding.startStopButton.isEnabled = targetMantra.isNotBlank() && !isRecognizingMantra.get() && !isRecordingMantra.get()
+            binding.deleteButton.isEnabled = targetMantra.isNotBlank() && targetMantra != inbuiltMantraName && !isRecognizingMantra.get() && !isRecordingMantra.get()
+            binding.mantraSpinner.isEnabled = !isRecognizingMantra.get() && !isRecordingMantra.get()
+        }
     }
 
     private fun triggerAlarm() {

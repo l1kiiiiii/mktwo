@@ -3,6 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    xmlns:ndroid="http://schemas.android.com/apk/res-auto"
     android:orientation="vertical"
     android:padding="16dp">
 
@@ -10,8 +11,9 @@
         android:id="@+id/mantraSpinner"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Select Mantra"
-        tools:ignore="TouchTargetSizeCheck" />
+        android:hint="@string/select_mantra_hint"
+        android:minHeight="48dp"
+        android:padding="8dp" />
 
     <EditText
         android:id="@+id/matchLimitEditText"
