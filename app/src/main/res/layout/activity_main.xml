@@ -3,13 +3,12 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    xmlns:ndroid="http://schemas.android.com/apk/res-auto"
     android:orientation="vertical"
     android:padding="16dp">
 
     <Space
         android:layout_width="match_parent"
-        android:layout_height="24dp"/>
+        android:layout_height="40dp"/>
 
     <Spinner
         android:id="@+id/mantraSpinner"
@@ -24,50 +23,57 @@
         android:id="@+id/matchLimitEditText"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:autofillHints=""
         android:hint="Enter Match Limit"
         android:inputType="number"
-        tools:ignore="TouchTargetSizeCheck" />
+        tools:ignore="HardcodedText,TouchTargetSizeCheck" />
 
     <EditText
         android:id="@+id/mantraNameEditText"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:hint="Enter Mantra Name for Recording"
-        tools:ignore="TouchTargetSizeCheck" />
+        android:importantForAutofill="no"
+        tools:ignore="HardcodedText,TextFields,TouchTargetSizeCheck" />
 
     <Button
         android:id="@+id/startStopButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Start Listening" />
+        android:text="Start Listening"
+        tools:ignore="HardcodedText" />
 
     <Button
         android:id="@+id/recordButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Record Mantra" />
+        android:text="Record Mantra"
+        tools:ignore="HardcodedText,VisualLintButtonSize" />
 
     <Button
         android:id="@+id/stopRecordingButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Stop Recording" />
+        android:text="@string/stop_recording" />
 
     <Button
         android:id="@+id/deleteButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Delete Mantra" />
+        android:text="Delete Mantra"
+        tools:ignore="HardcodedText,VisualLintButtonSize" />
 
     <TextView
         android:id="@+id/statusText"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Stopped" />
+        android:text="Stopped"
+        tools:ignore="HardcodedText" />
 
     <TextView
         android:id="@+id/matchCountText"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Matches: 0" />
+        android:text="Matches: 0"
+        tools:ignore="HardcodedText" />
 </LinearLayout>

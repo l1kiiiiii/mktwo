@@ -11,4 +11,6 @@
     <string name="stop_recording_button_text">Stop Recording</string>
     <string name="delete_mantra_button_text">Delete Mantra</string>
     <string name="match_count_initial">Matches: 0</string>
+    <string name="enter_match_limit">Enter Match Limit</string>
+    <string name="stop_recording">Stop Recording</string>
 </resources>
