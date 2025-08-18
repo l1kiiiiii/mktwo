@@ -16,17 +16,9 @@
         android:layout_height="wrap_content"
         android:hint="@string/select_mantra_hint"
         android:minHeight="54dp"
-        android:padding="8dp"
-        />
+        android:padding="8dp" />
 
-    <EditText
-        android:id="@+id/matchLimitEditText"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:autofillHints=""
-        android:hint="Enter Match Limit"
-        android:inputType="number"
-        tools:ignore="HardcodedText,TouchTargetSizeCheck" />
+
 
     <EditText
         android:id="@+id/mantraNameEditText"
@@ -37,13 +29,6 @@
         tools:ignore="HardcodedText,TextFields,TouchTargetSizeCheck" />
 
     <Button
-        android:id="@+id/startStopButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Start Listening"
-        tools:ignore="HardcodedText" />
-
-    <Button
         android:id="@+id/recordButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -51,17 +36,37 @@
         tools:ignore="HardcodedText,VisualLintButtonSize" />
 
     <Button
-        android:id="@+id/stopRecordingButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/stop_recording" />
-
-    <Button
         android:id="@+id/deleteButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Delete Mantra"
         tools:ignore="HardcodedText,VisualLintButtonSize" />
+
+    <EditText
+        android:id="@+id/matchLimitEditText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:autofillHints=""
+        android:hint="Enter Match Limit"
+        android:inputType="number"
+        tools:ignore="HardcodedText,TouchTargetSizeCheck" />
+
+    <Button
+        android:id="@+id/startStopButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Start Listening"
+        tools:ignore="HardcodedText" />
+
+
+
+    <Button
+        android:id="@+id/stopRecordingButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/stop_recording" />
+
+
 
     <TextView
         android:id="@+id/statusText"
